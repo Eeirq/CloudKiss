@@ -1,30 +1,41 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'eeirq/cloudkiss:latest'
-        EC2_HOST = 'your-existing-ec2-public-ip'
+        DOCKER_IMAGE = 'cloudkiss'
+        DOCKER_HUB_REPO = 'eelysa/cloudkiss:latest'
     }
     stages {
-        stage('Clone Repository') {
+        stage('Pull Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/Eeirq/CloudKiss.git'
+                git 'https://github.com/Eeirq/CloudKiss.git'
+            }
+        }
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                }
             }
         }
         stage('Build Docker Image') {
             steps {
-                sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 sh 'docker build -t ${DOCKER_IMAGE} .'
-                sh 'docker push ${DOCKER_IMAGE}'
             }
         }
-        stage('Deploy on Existing EC2 Instance') {
+        stage('Push Docker Image') {
+            steps {
+                sh 'docker tag ${DOCKER_IMAGE} ${DOCKER_HUB_REPO}'
+                sh 'docker push ${DOCKER_HUB_REPO}'
+            }
+        }
+        stage('Deploy to EC2') {
             steps {
                 sh '''
                     ssh -i "CloudStar.pem" ec2-user@${EC2_HOST} <<EOF
-                    docker pull ${DOCKER_IMAGE}
                     docker stop cloudkiss || true
                     docker rm cloudkiss || true
-                    docker run -d --name cloudkiss -p 8000:8000 ${DOCKER_IMAGE}
+                    docker pull ${DOCKER_HUB_REPO}
+                    docker run -d --name cloudkiss -p 8000:8000 ${DOCKER_HUB_REPO}
                     EOF
                 '''
             }

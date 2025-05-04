@@ -117,8 +117,9 @@ USE_TZ = True
 import os
 from pathlib import Path
 
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-STATICFILES_DIRS = [os.path.join(BASE_DIR, "Gamble_Boss", "members", "static")]
+STATIC_URL = '/static/'  # REQUIRED for collectstatic
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "members", "static")]
+
 
 TEMPLATES = [
     {
