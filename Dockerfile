@@ -14,7 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set environment variables for Django
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
+
+# Ensure Docker credential store is configured
+RUN mkdir -p ~/.docker && echo '{ "credsStore": "pass" }' > ~/.docker/config.json
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
