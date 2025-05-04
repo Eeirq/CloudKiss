@@ -2,11 +2,12 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = 'eeirq/cloudkiss:latest'
+        EC2_HOST = 'your-existing-ec2-public-ip'
     }
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/Eeirq/CloudKiss.git'
+                git branch: 'main', url: 'https://github.com/Eeirq/CloudKiss.git'
             }
         }
         stage('Build Docker Image') {
@@ -15,9 +16,16 @@ pipeline {
                 sh 'docker push ${DOCKER_IMAGE}'
             }
         }
-        stage('Deploy on EC2') {
+        stage('Deploy on Existing EC2 Instance') {
             steps {
-                sh 'ssh -i "CloudStar.pem" ec2-user@ec2-3-134-207 "docker pull ${DOCKER_IMAGE} && docker run -d -p 8000:8000 ${DOCKER_IMAGE}"'
+                sh '''
+                    ssh -i "CloudStar.pem" ec2-user@${EC2_HOST} <<EOF
+                    docker pull ${DOCKER_IMAGE}
+                    docker stop cloudkiss || true
+                    docker rm cloudkiss || true
+                    docker run -d --name cloudkiss -p 8000:8000 ${DOCKER_IMAGE}
+                    EOF
+                '''
             }
         }
     }
