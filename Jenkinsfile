@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Pull Code') {
             steps {
-                git 'https://github.com/Eeirq/CloudKiss.git'
+                git branch: 'main', url: 'https://github.com/Eeirq/CloudKiss.git'
             }
         }
         stage('Docker Login') {
