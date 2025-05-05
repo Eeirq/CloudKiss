@@ -1,43 +1,27 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = 'cloudkiss'
-        DOCKER_HUB_REPO = 'eelysa/cloudkiss:latest'
-    }
     stages {
-        stage('Pull Code') {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/Eeirq/CloudKiss.git'
-            }
-        }
-        stage('Docker Login') {
-            steps {
-               withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-               sh 'echo $DOCKER_PASS | docker login --username $DOCKER_USER --password-stdin'
-               }
+                git url: 'https://github.com/Eeirq/CloudKiss.git', branch: 'main'
             }
         }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE} .'
+                sh 'docker build -t eelysa/cloudkiss .'
             }
         }
-        stage('Push Docker Image') {
+        stage('Push to Docker Hub') {
             steps {
-                sh 'docker tag ${DOCKER_IMAGE} ${DOCKER_HUB_REPO}'
-                sh 'docker push ${DOCKER_HUB_REPO}'
+                withDockerRegistry([credentialsId: 'dockerhub-credentials', url: 'https://index.docker.io/v1/']) {
+                    sh 'docker push eelysa/cloudkiss'
+                }
             }
         }
-        stage('Deploy to EC2') {
+        stage('Deploy Application') {
             steps {
-                sh '''
-                    ssh -i "CloudStar.pem" ec2-user@${EC2_HOST} <<EOF
-                    docker stop cloudkiss || true
-                    docker rm cloudkiss || true
-                    docker pull ${DOCKER_HUB_REPO}
-                    docker run -d --name cloudkiss -p 8000:8000 ${DOCKER_HUB_REPO}
-                    EOF
-                '''
+                sh 'docker pull eelysa/cloudkiss:latest'
+                sh 'docker run -d -p 8000:8000 --name cloudkiss eelysa/cloudkiss:latest'
             }
         }
     }
